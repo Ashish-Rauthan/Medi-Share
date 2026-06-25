@@ -62,4 +62,29 @@ const sendApprovalEmail = async (to, name, approved) => {
   });
 };
 
-module.exports = { generateOtp, sendOtpEmail, sendApprovalEmail };
+const sendContactEmail = async ({ name, email, subject, message }) => {
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;padding:32px;background:#f8fafc;border-radius:12px;">
+      <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
+        <h2 style="color:#0f172a;margin:0 0 8px;">New contact form message</h2>
+        <p style="color:#64748b;margin:0 0 16px;">A visitor filled out the contact form on MediShare.</p>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;">
+          <p style="margin:0 0 8px;"><strong>Name:</strong> ${name}</p>
+          <p style="margin:0 0 8px;"><strong>Email:</strong> ${email}</p>
+          <p style="margin:0 0 8px;"><strong>Subject:</strong> ${subject}</p>
+          <p style="margin:0;"><strong>Message:</strong><br />${message.replace(/\n/g, '<br />')}</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from: `"MediShare Contact" <${process.env.EMAIL_USER}>`,
+    to: process.env.CONTACT_ADMIN_EMAIL || 'ashishrauthan096@gmail.com',
+    replyTo: email,
+    subject: `MediShare Contact Form: ${subject}`,
+    html,
+  });
+};
+
+module.exports = { generateOtp, sendOtpEmail, sendApprovalEmail, sendContactEmail };

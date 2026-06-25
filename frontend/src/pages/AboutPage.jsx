@@ -12,7 +12,7 @@ export default function AboutPage() {
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64 }}>
           <Link to="/" style={{ fontFamily: 'Hanken Grotesk, sans-serif', fontWeight: 700, fontSize: '1.2rem', color: 'var(--ds-primary)', textDecoration: 'none' }}>MediShare</Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-            {[['Home','/'],['How It Works','/about'],['Donate','/login'],['Request Medicines','/login'],['Contact','/#contact']].map(([label, href]) => (
+            {[['Home','/'],['How It Works','/about'],['Donate','/register?role=donor'],['Request Medicines','/register?role=ngo'],['Contact','/#contact']].map(([label, href]) => (
               <Link key={label} to={href} style={{ fontSize: '.9rem', color: label === 'How It Works' ? 'var(--ds-secondary)' : 'var(--ds-on-surface-variant)', textDecoration: 'none', fontWeight: label === 'How It Works' ? 600 : 500, borderBottom: label === 'How It Works' ? '2px solid var(--ds-secondary)' : 'none', paddingBottom: 2 }}>{label}</Link>
             ))}
           </div>

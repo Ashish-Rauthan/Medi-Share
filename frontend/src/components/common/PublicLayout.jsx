@@ -6,8 +6,8 @@ function PublicNav() {
   const links = [
     ['Home', '/'],
     ['How It Works', '/about'],
-    ['Donate', '/register'],
-    ['Request Medicines', '/register'],
+    ['Donate', '/register?role=donor'],
+    ['Request Medicines', '/register?role=ngo'],
     ['Contact', '/#contact'],
   ];
   return (
@@ -18,11 +18,11 @@ function PublicNav() {
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
           {links.map(([label, href]) => {
-            const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href.replace('/#contact',''));
+            const isExact = href === '/' ? pathname === '/' : pathname === href.split('?')[0];
             return href.startsWith('/#') ? (
               <a key={label} href={href} style={{ fontSize: '.9rem', color: 'var(--ds-on-surface-variant)', textDecoration: 'none', fontWeight: 500 }}>{label}</a>
             ) : (
-              <Link key={label} to={href} style={{ fontSize: '.9rem', color: isActive ? 'var(--ds-secondary)' : 'var(--ds-on-surface-variant)', textDecoration: 'none', fontWeight: isActive ? 600 : 500, borderBottom: isActive ? '2px solid var(--ds-secondary)' : 'none', paddingBottom: 2 }}>{label}</Link>
+              <Link key={label} to={href} style={{ fontSize: '.9rem', color: isExact ? 'var(--ds-secondary)' : 'var(--ds-on-surface-variant)', textDecoration: 'none', fontWeight: isExact ? 600 : 500, borderBottom: isExact ? '2px solid var(--ds-secondary)' : 'none', paddingBottom: 2 }}>{label}</Link>
             );
           })}
         </div>
@@ -55,7 +55,7 @@ function PublicFooter() {
           </div>
           <div>
             <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '.75rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.4)', marginBottom: '1rem' }}>Quick Links</div>
-            {[['Home', '/'], ['How It Works', '/about'], ['Donate', '/register'], ['Request Medicines', '/register']].map(([l, h]) => (
+            {[['Home', '/'], ['How It Works', '/about'], ['Donate', '/register?role=donor'], ['Request Medicines', '/register?role=ngo']].map(([l, h]) => (
               <Link key={l} to={h} style={{ display: 'block', color: 'rgba(255,255,255,.65)', fontSize: '.875rem', textDecoration: 'none', marginBottom: '.5rem' }}>{l}</Link>
             ))}
           </div>

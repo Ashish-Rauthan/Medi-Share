@@ -8,6 +8,7 @@ const authRoutes = require('./src/routes/auth');
 const medicineRoutes = require('./src/routes/medicines');
 const requestRoutes = require('./src/routes/requests');
 const adminRoutes = require('./src/routes/admin');
+const contactRoutes = require('./src/routes/contact');
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/medicines', medicineRoutes);
 app.use('/api/requests', requestRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/contact', contactRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 app.use((req, res) => res.status(404).json({ message: 'Route not found' }));

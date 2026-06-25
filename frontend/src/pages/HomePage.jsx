@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import { ShieldCheck, Package, MapPin, ArrowRight, ChevronDown, ChevronUp, Mail, Phone, Building, Send, Heart, Twitter, Linkedin, Facebook } from 'lucide-react';
 import { useState } from 'react';
+import toast from 'react-hot-toast';
+import api from '../utils/api';
 
 const faqs = [
   { q: 'What medicines can I donate?', a: 'You can donate any unused, unexpired prescription or over-the-counter medicines. Medicines must have at least 30 days until expiry and be in their original, sealed packaging.' },
@@ -27,7 +29,51 @@ function FaqItem({ q, a }) {
 
 export default function HomePage() {
   const [contactForm, setContactForm] = useState({ name: '', email: '', subject: '', message: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState('');
   const set = (k, v) => setContactForm(p => ({ ...p, [k]: v }));
+
+  const hasRecentSubmission = () => {
+    if (typeof window === 'undefined') return false;
+    const saved = window.sessionStorage.getItem('medishare_contact_submitted_at');
+    if (!saved) return false;
+    return Date.now() - Number(saved) < 60000;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitMessage('');
+
+    if (hasRecentSubmission()) {
+      const message = 'Your message was already sent recently. Please wait a moment before sending another one.';
+      setSubmitMessage(message);
+      toast.error(message);
+      return;
+    }
+
+    if (!contactForm.name.trim() || !contactForm.email.trim() || !contactForm.subject.trim() || !contactForm.message.trim()) {
+      const message = 'Please fill in all fields before sending your message.';
+      setSubmitMessage(message);
+      toast.error(message);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await api.post('/contact', contactForm);
+      setContactForm({ name: '', email: '', subject: '', message: '' });
+      window.sessionStorage.setItem('medishare_contact_submitted_at', Date.now().toString());
+      const successMessage = 'Thanks! Your message has been sent successfully.';
+      setSubmitMessage(successMessage);
+      toast.success(successMessage);
+    } catch (error) {
+      const message = error.response?.data?.message || 'Unable to send your message right now. Please try again later.';
+      setSubmitMessage(message);
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div style={{ fontFamily: 'Inter, sans-serif', background: 'var(--ds-bg)', color: 'var(--ds-on-surface)', minHeight: '100vh' }}>
@@ -37,7 +83,7 @@ export default function HomePage() {
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64 }}>
           <Link to="/" style={{ fontFamily: 'Hanken Grotesk, sans-serif', fontWeight: 700, fontSize: '1.2rem', color: 'var(--ds-primary)', textDecoration: 'none' }}>MediShare</Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-            {[['Home', '/'], ['How It Works', '/about'], ['Donate', '/login'], ['Request Medicines', '/login'], ['Contact', '#contact']].map(([label, href]) => (
+            {[['Home', '/'], ['How It Works', '/about'], ['Donate', '/register?role=donor'], ['Request Medicines', '/register?role=ngo'], ['Contact', '#contact']].map(([label, href]) => (
               href.startsWith('#')
                 ? <a key={label} href={href} style={{ fontSize: '.9rem', color: 'var(--ds-on-surface-variant)', textDecoration: 'none', fontWeight: 500 }}>{label}</a>
                 : <Link key={label} to={href} style={{ fontSize: '.9rem', color: label === 'Home' ? 'var(--ds-secondary)' : 'var(--ds-on-surface-variant)', textDecoration: 'none', fontWeight: label === 'Home' ? 600 : 500, borderBottom: label === 'Home' ? '2px solid var(--ds-secondary)' : 'none', paddingBottom: 2 }}>{label}</Link>
@@ -64,10 +110,10 @@ export default function HomePage() {
             Donate unused, unexpired medicines to verified organizations helping those in need. Join our transparent platform to reduce medical waste and save lives.
           </p>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <Link to="/register" style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', background: 'var(--ds-secondary)', color: '#fff', padding: '.75rem 1.5rem', borderRadius: 8, fontWeight: 600, textDecoration: 'none', fontSize: '1rem', boxShadow: '0 4px 20px -2px rgba(0,106,97,.25)' }}>
+            <Link to="/register?role=donor" style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', background: 'var(--ds-secondary)', color: '#fff', padding: '.75rem 1.5rem', borderRadius: 8, fontWeight: 600, textDecoration: 'none', fontSize: '1rem', boxShadow: '0 4px 20px -2px rgba(0,106,97,.25)' }}>
               <Heart size={18} /> Donate Medicine
             </Link>
-            <Link to="/register" style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', background: 'var(--ds-surface-container)', color: 'var(--ds-primary)', padding: '.75rem 1.5rem', borderRadius: 8, fontWeight: 600, textDecoration: 'none', fontSize: '1rem', border: '1px solid var(--ds-outline-variant)' }}>
+            <Link to="/register?role=ngo" style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', background: 'var(--ds-surface-container)', color: 'var(--ds-primary)', padding: '.75rem 1.5rem', borderRadius: 8, fontWeight: 600, textDecoration: 'none', fontSize: '1rem', border: '1px solid var(--ds-outline-variant)' }}>
               Request Medicine
             </Link>
           </div>
@@ -194,7 +240,7 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)', borderRadius: 16, padding: '2rem', boxShadow: '0 4px 20px -2px rgba(30,41,59,.05)' }}>
+          <form onSubmit={handleSubmit} style={{ background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.5)', borderRadius: 16, padding: '2rem', boxShadow: '0 4px 20px -2px rgba(30,41,59,.05)' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               {[['name','Full Name','John Doe'],['email','Email Address','john@example.com']].map(([k, label, ph]) => (
                 <div key={k}>
@@ -214,10 +260,13 @@ export default function HomePage() {
               <textarea value={contactForm.message} onChange={e => set('message', e.target.value)} placeholder="Your message here..." rows={4}
                 style={{ width: '100%', padding: '.65rem .9rem', border: '1.5px solid var(--ds-outline-variant)', borderRadius: 8, fontSize: '.9rem', fontFamily: 'Inter, sans-serif', background: 'var(--ds-surface-container-low)', outline: 'none', boxSizing: 'border-box', resize: 'vertical', color: 'var(--ds-on-surface)' }} />
             </div>
-            <button style={{ width: '100%', background: 'var(--ds-primary)', color: '#fff', border: 'none', padding: '.875rem', borderRadius: 8, fontWeight: 600, fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '.5rem', fontFamily: 'Inter, sans-serif' }}>
-              <Send size={18} /> Send Message
+            {submitMessage && (
+              <div style={{ marginBottom: '1rem', fontSize: '.875rem', color: submitMessage.includes('successfully') ? '#166534' : '#7f1d1d' }}>{submitMessage}</div>
+            )}
+            <button type="submit" disabled={isSubmitting || hasRecentSubmission()} style={{ width: '100%', background: 'var(--ds-primary)', color: '#fff', border: 'none', padding: '.875rem', borderRadius: 8, fontWeight: 600, fontSize: '1rem', cursor: (isSubmitting || hasRecentSubmission()) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '.5rem', fontFamily: 'Inter, sans-serif', opacity: (isSubmitting || hasRecentSubmission()) ? 0.7 : 1 }}>
+              {isSubmitting ? 'Sending...' : <><Send size={18} /> Send Message</>}
             </button>
-          </div>
+          </form>
         </div>
       </section>
 
