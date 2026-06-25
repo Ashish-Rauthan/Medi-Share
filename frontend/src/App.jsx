@@ -4,6 +4,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Sidebar from './components/common/Sidebar';
 import LoadingSpinner from './components/common/LoadingSpinner';
 
+import HomePage from './pages/HomePage';
+import AboutPage from './pages/AboutPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import VerifyOtp from './pages/VerifyOtp';
@@ -49,26 +51,33 @@ export default function App() {
       <BrowserRouter>
         <Toaster position="top-right" toastOptions={{ duration: 3500, style: { fontFamily: 'var(--font-sans)', fontSize: '.875rem' } }} />
         <Routes>
+          {/* Public landing pages — always accessible */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/about" element={<AboutPage />} />
+
+          {/* Auth pages — redirect to dashboard if already logged in */}
           <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
           <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
           <Route path="/verify-otp" element={<VerifyOtp />} />
 
+          {/* Donor */}
           <Route path="/donor" element={<ProtectedLayout allowedRoles={['donor']}><DonorDashboard /></ProtectedLayout>} />
           <Route path="/donor/donate" element={<ProtectedLayout allowedRoles={['donor']}><DonateMedicine /></ProtectedLayout>} />
           <Route path="/donor/my-donations" element={<ProtectedLayout allowedRoles={['donor']}><MyDonations /></ProtectedLayout>} />
 
+          {/* NGO */}
           <Route path="/ngo" element={<ProtectedLayout allowedRoles={['ngo']}><NgoDashboard /></ProtectedLayout>} />
           <Route path="/ngo/browse" element={<ProtectedLayout allowedRoles={['ngo']}><BrowseMedicines /></ProtectedLayout>} />
           <Route path="/ngo/my-requests" element={<ProtectedLayout allowedRoles={['ngo']}><MyRequests /></ProtectedLayout>} />
 
+          {/* Admin */}
           <Route path="/admin" element={<ProtectedLayout allowedRoles={['admin']}><AdminDashboard /></ProtectedLayout>} />
           <Route path="/admin/medicines" element={<ProtectedLayout allowedRoles={['admin']}><AdminMedicines /></ProtectedLayout>} />
           <Route path="/admin/requests" element={<ProtectedLayout allowedRoles={['admin']}><AdminRequests /></ProtectedLayout>} />
           <Route path="/admin/users" element={<ProtectedLayout allowedRoles={['admin']}><AdminUsers /></ProtectedLayout>} />
           <Route path="/admin/ngos" element={<ProtectedLayout allowedRoles={['admin']}><AdminNGOs /></ProtectedLayout>} />
 
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

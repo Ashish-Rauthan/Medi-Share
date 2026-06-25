@@ -1,3 +1,6 @@
+
+/* Google Fonts for design system */
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -316,3 +319,29 @@ tbody tr:last-child td { border-bottom: none; }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
+/* ── Clinical Precision Design System Variables ── */
+:root {
+  --ds-bg: #f8f9ff;
+  --ds-surface: #f8f9ff;
+  --ds-surface-container-lowest: #ffffff;
+  --ds-surface-container-low: #eff4ff;
+  --ds-surface-container: #e5eeff;
+  --ds-surface-container-high: #dce9ff;
+  --ds-surface-container-highest: #d3e4fe;
+  --ds-on-surface: #0b1c30;
+  --ds-on-surface-variant: #45474c;
+  --ds-outline: #75777d;
+  --ds-outline-variant: #c5c6cd;
+  --ds-primary: #091426;
+  --ds-on-primary: #ffffff;
+  --ds-primary-container: #1e293b;
+  --ds-on-primary-container: #8590a6;
+  --ds-secondary: #006a61;
+  --ds-on-secondary: #ffffff;
+  --ds-secondary-container: #86f2e4;
+  --ds-on-secondary-container: #006f66;
+  --ds-tertiary: #0b1612;
+  --ds-surface-variant: #d3e4fe;
+  --ds-inverse-surface: #213145;
+  --ds-inverse-on-surface: #eaf1ff;
+}
