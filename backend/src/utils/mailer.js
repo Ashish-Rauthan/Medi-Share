@@ -1,38 +1,61 @@
 const nodemailer = require('nodemailer');
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS, // Gmail App Password
-  },
-});
+// ── Lazy transporter — created on first use, not at module load ───────────────
+// This prevents the server from crashing at startup when EMAIL creds are missing
+// in environments that don't need mail (e.g. running tests).
+let _transporter = null;
 
-const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
+function getTransporter() {
+  if (_transporter) return _transporter;
 
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    throw new Error(
+      'EMAIL_USER and EMAIL_PASS must be set in .env to send emails. ' +
+      'Use a Gmail App Password — see backend/.env.example.'
+    );
+  }
+
+  _transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  return _transporter;
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+const generateOtp = () =>
+  Math.floor(100_000 + Math.random() * 900_000).toString();
+
+// ── Templates ─────────────────────────────────────────────────────────────────
 const sendOtpEmail = async (to, name, otp) => {
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#f8fafc;border-radius:12px;">
       <div style="text-align:center;margin-bottom:24px;">
-        <div style="display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;background:#0284c7;border-radius:12px;margin-bottom:12px;">
-          <span style="color:#fff;font-size:24px;">+</span>
-        </div>
         <h1 style="color:#0f172a;font-size:22px;margin:0;">MediShare</h1>
       </div>
       <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
         <h2 style="color:#0f172a;font-size:18px;margin:0 0 8px;">Verify your email</h2>
-        <p style="color:#64748b;font-size:14px;margin:0 0 24px;">Hi ${name}, use the OTP below to verify your email address. It expires in <strong>10 minutes</strong>.</p>
+        <p style="color:#64748b;font-size:14px;margin:0 0 24px;">
+          Hi ${name}, use the OTP below to verify your email address.
+          It expires in <strong>10 minutes</strong>.
+        </p>
         <div style="text-align:center;margin:24px 0;">
           <span style="font-size:36px;font-weight:800;letter-spacing:10px;color:#0284c7;">${otp}</span>
         </div>
-        <p style="color:#94a3b8;font-size:12px;text-align:center;margin:0;">Do not share this OTP with anyone.</p>
+        <p style="color:#94a3b8;font-size:12px;text-align:center;margin:0;">
+          Do not share this OTP with anyone. MediShare staff will never ask for it.
+        </p>
       </div>
     </div>
   `;
-  await transporter.sendMail({
+  await getTransporter().sendMail({
     from: `"MediShare" <${process.env.EMAIL_USER}>`,
     to,
-    subject: `${otp} is your MediShare verification code`,
+    subject: `${otp} — your MediShare verification code`,
     html,
   });
 };
@@ -54,7 +77,7 @@ const sendApprovalEmail = async (to, name, approved) => {
       </div>
     </div>
   `;
-  await transporter.sendMail({
+  await getTransporter().sendMail({
     from: `"MediShare" <${process.env.EMAIL_USER}>`,
     to,
     subject: `MediShare NGO Account ${approved ? 'Approved' : 'Rejected'}`,
@@ -63,6 +86,7 @@ const sendApprovalEmail = async (to, name, approved) => {
 };
 
 const sendContactEmail = async ({ name, email, subject, message }) => {
+  // Note: name/subject/message should already be HTML-escaped by the route handler
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;padding:32px;background:#f8fafc;border-radius:12px;">
       <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
@@ -77,12 +101,11 @@ const sendContactEmail = async ({ name, email, subject, message }) => {
       </div>
     </div>
   `;
-
-  await transporter.sendMail({
+  await getTransporter().sendMail({
     from: `"MediShare Contact" <${process.env.EMAIL_USER}>`,
-    to: process.env.CONTACT_ADMIN_EMAIL || 'ashishrauthan096@gmail.com',
+    to: process.env.CONTACT_ADMIN_EMAIL || process.env.EMAIL_USER,
     replyTo: email,
-    subject: `MediShare Contact Form: ${subject}`,
+    subject: `MediShare Contact: ${subject}`,
     html,
   });
 };
