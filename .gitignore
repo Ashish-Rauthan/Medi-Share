@@ -24,3 +24,158 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
+# ─────────────────────────────────────────────
+#  MediShare — Root .gitignore
+# ─────────────────────────────────────────────
+
+# ══════════════════════════════════════════════
+#  CONFIDENTIAL / ENVIRONMENT FILES
+# ══════════════════════════════════════════════
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+.env.staging
+*.env
+
+# ══════════════════════════════════════════════
+#  DEPENDENCIES
+# ══════════════════════════════════════════════
+node_modules/
+.pnp
+.pnp.js
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# ══════════════════════════════════════════════
+#  BUILD OUTPUT
+# ══════════════════════════════════════════════
+frontend/dist/
+frontend/dist-ssr/
+frontend/.vite/
+build/
+dist/
+out/
+
+# ══════════════════════════════════════════════
+#  UPLOADS (user-generated content)
+#  Keep the folder but ignore actual files
+# ══════════════════════════════════════════════
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# ══════════════════════════════════════════════
+#  LOGS
+# ══════════════════════════════════════════════
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ══════════════════════════════════════════════
+#  RUNTIME / CACHE
+# ══════════════════════════════════════════════
+.cache/
+.parcel-cache/
+.turbo/
+.eslintcache
+*.tsbuildinfo
+
+# ══════════════════════════════════════════════
+#  TESTING
+# ══════════════════════════════════════════════
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+*.lcov
+
+# ══════════════════════════════════════════════
+#  OS FILES
+# ══════════════════════════════════════════════
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Thumbs.db:encdata
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+
+# ══════════════════════════════════════════════
+#  EDITOR / IDE
+# ══════════════════════════════════════════════
+
+# VS Code (keep shared settings if you want, but ignore personal)
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+
+# JetBrains (WebStorm, IntelliJ, etc.)
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Vim / Emacs
+*.swp
+*.swo
+Session.vim
+.netrwhist
+
+# ══════════════════════════════════════════════
+#  MISC
+# ══════════════════════════════════════════════
+
+# Local dev scripts / scratch files
+scratch.*
+todo.md
+notes.md
+*.local
+
+# Certificates / Keys
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Database dumps
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+
+# Compressed files (usually shouldn't be versioned)
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Optional: lock files (remove the ! lines if you DO want to commit them)
+# package-lock.json
+# yarn.lock
