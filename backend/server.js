@@ -6,7 +6,6 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const mongoSanitize = require('express-mongo-sanitize');
 const compression = require('compression');
 
 const authRoutes     = require('./src/routes/auth');
@@ -32,6 +31,35 @@ if (process.env.JWT_SECRET === 'change-me' && process.env.NODE_ENV === 'producti
 const app = express();
 const isProduction = process.env.NODE_ENV === 'production';
 
+// ─── Express 5 compatible NoSQL injection sanitizer ───────────────────────────
+// express-mongo-sanitize v2 is incompatible with Express 5 because it tries to
+// overwrite req.query which is now a read-only getter. This inline replacement
+// mutates the existing object's keys instead of replacing the reference.
+const sanitizeValue = (val) => {
+  if (val && typeof val === 'object' && !Array.isArray(val)) {
+    return Object.fromEntries(
+      Object.entries(val)
+        .filter(([k]) => !k.startsWith('$'))
+        .map(([k, v]) => [k, sanitizeValue(v)])
+    );
+  }
+  if (Array.isArray(val)) return val.map(sanitizeValue);
+  return val;
+};
+
+const mongoSanitize = (req, res, next) => {
+  if (req.body) req.body = sanitizeValue(req.body);
+  if (req.params) req.params = sanitizeValue(req.params);
+  if (req.query) {
+    // Express 5: req.query is read-only, so spread into a new object,
+    // sanitize it, then write individual keys back onto the original object.
+    const sanitized = sanitizeValue({ ...req.query });
+    Object.keys(req.query).forEach(k => delete req.query[k]);
+    Object.assign(req.query, sanitized);
+  }
+  next();
+};
+
 // ─── Security headers ─────────────────────────────────────────────────────────
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }, // allow images to load cross-origin
@@ -54,11 +82,11 @@ app.use(cors({
 }));
 
 // ─── Body parsing ─────────────────────────────────────────────────────────────
-app.use(express.json({ limit: '1mb' }));           // tightened from 10mb
+app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // ─── NoSQL injection sanitization ────────────────────────────────────────────
-app.use(mongoSanitize());
+app.use(mongoSanitize);
 
 // ─── Compression ──────────────────────────────────────────────────────────────
 app.use(compression());
@@ -145,7 +173,7 @@ const PORT = Number(process.env.PORT) || 5000;
 
 mongoose.connect(process.env.MONGODB_URI, {
   serverSelectionTimeoutMS: 5000,
-  maxPoolSize: 10,             // connection pool — important under load
+  maxPoolSize: 10,
   minPoolSize: 2,
 })
   .then(() => {
