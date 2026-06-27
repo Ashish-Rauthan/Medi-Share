@@ -1,4 +1,13 @@
 const nodemailer = require('nodemailer');
+const dns = require('dns');
+
+// ── Force IPv4 DNS resolution ─────────────────────────────────────────────────
+// Render's free tier (and many cloud providers) blocks outbound IPv6 traffic.
+// Node.js defaults to IPv6-first resolution, which causes Gmail SMTP
+// (smtp.gmail.com) to resolve to an IPv6 address → ENETUNREACH.
+// Setting the default result order to 'ipv4first' forces IPv4 throughout
+// the process lifetime — safe to do here since this module loads early.
+dns.setDefaultResultOrder('ipv4first');
 
 // ── Lazy transporter — created on first use, not at module load ───────────────
 // This prevents the server from crashing at startup when EMAIL creds are missing
@@ -16,11 +25,20 @@ function getTransporter() {
   }
 
   _transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com', // explicit host instead of service:'gmail'
+    port: 465,              // SSL port — more reliable on restricted networks
+    secure: true,           // use SSL (not STARTTLS)
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
+    // Enforce IPv4 at the socket level as a belt-and-suspenders measure
+    // on top of the dns.setDefaultResultOrder call above.
+    family: 4,
+    // Generous timeouts for cold-start environments (Render spins down on free tier)
+    connectionTimeout: 10_000,
+    greetingTimeout:   10_000,
+    socketTimeout:     15_000,
   });
 
   return _transporter;

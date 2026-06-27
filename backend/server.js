@@ -31,6 +31,13 @@ if (process.env.JWT_SECRET === 'change-me' && process.env.NODE_ENV === 'producti
 const app = express();
 const isProduction = process.env.NODE_ENV === 'production';
 
+// ─── Trust proxy ──────────────────────────────────────────────────────────────
+// Render (and most cloud platforms) route traffic through a reverse proxy.
+// Without this, Express sees the proxy's IP instead of the real client IP,
+// and express-rate-limit throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
+// '1' means trust exactly one hop of X-Forwarded-For (the Render edge).
+app.set('trust proxy', 1);
+
 // ─── Express 5 compatible NoSQL injection sanitizer ───────────────────────────
 // express-mongo-sanitize v2 is incompatible with Express 5 because it tries to
 // overwrite req.query which is now a read-only getter. This inline replacement
