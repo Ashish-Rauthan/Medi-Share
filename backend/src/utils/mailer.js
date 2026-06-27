@@ -25,16 +25,21 @@ function getTransporter() {
   }
 
   _transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com', // explicit host instead of service:'gmail'
-    port: 465,              // SSL port — more reliable on restricted networks
-    secure: true,           // use SSL (not STARTTLS)
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,
+    requireTLS: true,       // use SSL (not STARTTLS)
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
     // Enforce IPv4 at the socket level as a belt-and-suspenders measure
     // on top of the dns.setDefaultResultOrder call above.
-    family: 4,
+
+
+    lookup(hostname, options, callback) {
+        return dns.lookup(hostname, { family: 4 }, callback);
+    },
     // Generous timeouts for cold-start environments (Render spins down on free tier)
     connectionTimeout: 10_000,
     greetingTimeout:   10_000,
