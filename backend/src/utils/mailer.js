@@ -1,57 +1,56 @@
-const nodemailer = require('nodemailer');
-const dns = require('dns');
+const SibApiV3Sdk = require('sib-api-v3-sdk');
 
-// ── Force IPv4 DNS resolution ─────────────────────────────────────────────────
-// Render's free tier (and many cloud providers) blocks outbound IPv6 traffic.
-// Node.js defaults to IPv6-first resolution, which causes Gmail SMTP
-// (smtp.gmail.com) to resolve to an IPv6 address → ENETUNREACH.
-// Setting the default result order to 'ipv4first' forces IPv4 throughout
-// the process lifetime — safe to do here since this module loads early.
-dns.setDefaultResultOrder('ipv4first');
-
-// ── Lazy transporter — created on first use, not at module load ───────────────
-// This prevents the server from crashing at startup when EMAIL creds are missing
-// in environments that don't need mail (e.g. running tests).
-let _transporter = null;
-
-function getTransporter() {
-  if (_transporter) return _transporter;
-
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    throw new Error(
-      'EMAIL_USER and EMAIL_PASS must be set in .env to send emails. ' +
-      'Use a Gmail App Password — see backend/.env.example.'
-    );
+function getClient() {
+  if (!process.env.BREVO_API_KEY) {
+    throw new Error('BREVO_API_KEY must be set in environment variables.');
   }
 
-  _transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false,
-    requireTLS: true,       // use SSL (not STARTTLS)
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-    // Enforce IPv4 at the socket level as a belt-and-suspenders measure
-    // on top of the dns.setDefaultResultOrder call above.
+  const defaultClient = SibApiV3Sdk.ApiClient.instance;
+  const apiKey = defaultClient.authentications['api-key'];
+  apiKey.apiKey = process.env.BREVO_API_KEY;
 
+  return new SibApiV3Sdk.TransactionalEmailsApi();
+}
 
-    lookup(hostname, options, callback) {
-        return dns.lookup(hostname, { family: 4 }, callback);
-    },
-    // Generous timeouts for cold-start environments (Render spins down on free tier)
-    connectionTimeout: 10_000,
-    greetingTimeout:   10_000,
-    socketTimeout:     15_000,
-  });
+// ── Verify at startup ─────────────────────────────────────────────────────────
+async function verifyMailer() {
+  try {
+    getClient();
+    console.log('✅ Mailer: Brevo client initialised successfully');
+    return true;
+  } catch (err) {
+    console.error('❌ Mailer: Brevo init FAILED —', err.message);
+    return false;
+  }
+}
 
-  return _transporter;
+// ── Send helper ───────────────────────────────────────────────────────────────
+async function sendMail({ fromName, fromEmail, to, subject, html }) {
+  const apiInstance = getClient();
+
+  const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+  sendSmtpEmail.sender      = { name: fromName, email: fromEmail };
+  sendSmtpEmail.to          = [{ email: to }];
+  sendSmtpEmail.subject     = subject;
+  sendSmtpEmail.htmlContent = html;
+
+  try {
+    const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log(`✅ Email sent to ${to} | messageId: ${result?.body?.messageId || 'ok'}`);
+    return result;
+  } catch (err) {
+    const message = err?.response?.body?.message || err.message;
+    console.error(`❌ Email FAILED to ${to} | error: ${message}`);
+    throw new Error(message);
+  }
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 const generateOtp = () =>
   Math.floor(100_000 + Math.random() * 900_000).toString();
+
+const SENDER_NAME  = 'MediShare';
+const SENDER_EMAIL = process.env.EMAIL_FROM || process.env.EMAIL_USER;
 
 // ── Templates ─────────────────────────────────────────────────────────────────
 const sendOtpEmail = async (to, name, otp) => {
@@ -75,8 +74,10 @@ const sendOtpEmail = async (to, name, otp) => {
       </div>
     </div>
   `;
-  await getTransporter().sendMail({
-    from: `"MediShare" <${process.env.EMAIL_USER}>`,
+
+  return sendMail({
+    fromName:  SENDER_NAME,
+    fromEmail: SENDER_EMAIL,
     to,
     subject: `${otp} — your MediShare verification code`,
     html,
@@ -100,8 +101,10 @@ const sendApprovalEmail = async (to, name, approved) => {
       </div>
     </div>
   `;
-  await getTransporter().sendMail({
-    from: `"MediShare" <${process.env.EMAIL_USER}>`,
+
+  return sendMail({
+    fromName:  SENDER_NAME,
+    fromEmail: SENDER_EMAIL,
     to,
     subject: `MediShare NGO Account ${approved ? 'Approved' : 'Rejected'}`,
     html,
@@ -109,7 +112,6 @@ const sendApprovalEmail = async (to, name, approved) => {
 };
 
 const sendContactEmail = async ({ name, email, subject, message }) => {
-  // Note: name/subject/message should already be HTML-escaped by the route handler
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;padding:32px;background:#f8fafc;border-radius:12px;">
       <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
@@ -124,13 +126,14 @@ const sendContactEmail = async ({ name, email, subject, message }) => {
       </div>
     </div>
   `;
-  await getTransporter().sendMail({
-    from: `"MediShare Contact" <${process.env.EMAIL_USER}>`,
+
+  return sendMail({
+    fromName:  SENDER_NAME,
+    fromEmail: SENDER_EMAIL,
     to: process.env.CONTACT_ADMIN_EMAIL || process.env.EMAIL_USER,
-    replyTo: email,
     subject: `MediShare Contact: ${subject}`,
     html,
   });
 };
 
-module.exports = { generateOtp, sendOtpEmail, sendApprovalEmail, sendContactEmail };
+module.exports = { generateOtp, sendOtpEmail, sendApprovalEmail, sendContactEmail, verifyMailer };
