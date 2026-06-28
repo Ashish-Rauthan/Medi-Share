@@ -2,11 +2,10 @@ const express = require('express');
 const router = express.Router();
 const Medicine = require('../models/Medicine');
 const { protect, requireRole } = require('../middleware/auth');
-const upload = require('../middleware/upload');
 const { handleUpload } = require('../middleware/upload');
+const cloudinary = require('../utils/cloudinary');
 
 // ─── GET /api/medicines ───────────────────────────────────────────────────────
-// NGO → approved only | Donor → own listings | Admin → all (with optional status filter)
 router.get('/', protect, async (req, res) => {
   try {
     const { search, status } = req.query;
@@ -18,8 +17,7 @@ router.get('/', protect, async (req, res) => {
         query.status = status;
       }
     } else if (req.user.role === 'ngo') {
-      // Only show approved medicines with quantity > 0
-      query.status = 'approved';
+      query.status   = 'approved';
       query.quantity = { $gt: 0 };
     } else if (req.user.role === 'admin') {
       if (status && ['pending', 'approved', 'rejected'].includes(status)) {
@@ -28,7 +26,6 @@ router.get('/', protect, async (req, res) => {
     }
 
     if (search && search.trim()) {
-      // Sanitize: escape regex special characters to prevent ReDoS
       const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.name = { $regex: escaped, $options: 'i' };
     }
@@ -55,15 +52,11 @@ router.get('/:id', protect, async (req, res) => {
     if (!medicine)
       return res.status(404).json({ message: 'Medicine not found.' });
 
-    // Donors may only view their own medicines
-    if (req.user.role === 'donor' && medicine.donor._id.toString() !== req.user._id.toString()) {
+    if (req.user.role === 'donor' && medicine.donor._id.toString() !== req.user._id.toString())
       return res.status(403).json({ message: 'Not authorized to view this medicine.' });
-    }
 
-    // NGOs may only view approved medicines
-    if (req.user.role === 'ngo' && medicine.status !== 'approved') {
+    if (req.user.role === 'ngo' && medicine.status !== 'approved')
       return res.status(404).json({ message: 'Medicine not found.' });
-    }
 
     res.json({ medicine });
   } catch (err) {
@@ -77,7 +70,6 @@ router.post('/', protect, requireRole('donor'), handleUpload('image'), async (re
   try {
     const { name, quantity, unit, expiryDate, description, category } = req.body;
 
-    // Validation
     if (!name || !name.trim())
       return res.status(400).json({ message: 'Medicine name is required.' });
     if (!quantity)
@@ -104,6 +96,13 @@ router.post('/', protect, requireRole('donor'), handleUpload('image'), async (re
     if (description && description.length > 500)
       return res.status(400).json({ message: 'Description must be under 500 characters.' });
 
+    // req.file.path  = full Cloudinary HTTPS URL  e.g. https://res.cloudinary.com/...
+    // req.file.filename = public_id               e.g. medishare/medicines/medicine-xxx
+    const imageUrl      = req.file ? req.file.path     : null;
+    const imagePublicId = req.file ? req.file.filename  : null;
+
+    console.log('💊 Creating medicine with imageUrl:', imageUrl);
+
     const medicine = await Medicine.create({
       name: name.trim(),
       quantity: qty,
@@ -111,7 +110,8 @@ router.post('/', protect, requireRole('donor'), handleUpload('image'), async (re
       expiryDate: expiry,
       description: description?.trim(),
       category: category || 'General',
-      imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
+      imageUrl,
+      imagePublicId,
       donor: req.user._id,
     });
 
@@ -135,7 +135,7 @@ router.patch('/:id/status', protect, requireRole('admin'), async (req, res) => {
     const medicine = await Medicine.findByIdAndUpdate(
       req.params.id,
       { status, adminNote: adminNote?.trim() || undefined },
-      { new: true }
+      { returnDocument: 'after' }
     ).populate('donor', 'name email');
 
     if (!medicine)
@@ -162,6 +162,16 @@ router.delete('/:id', protect, async (req, res) => {
         return res.status(400).json({ message: 'Only pending listings can be deleted.' });
     } else if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized.' });
+    }
+
+    // Delete image from Cloudinary
+    if (medicine.imagePublicId) {
+      try {
+        await cloudinary.uploader.destroy(medicine.imagePublicId);
+        console.log('✅ Cloudinary image deleted:', medicine.imagePublicId);
+      } catch (cloudErr) {
+        console.error('❌ Cloudinary image delete failed:', cloudErr.message);
+      }
     }
 
     await medicine.deleteOne();
